@@ -194,11 +194,15 @@ The product is built in phases; each is functional and tested before the next.
   (`vercel.json`); one-click magic-link "Update Inventory" buttons;
   super-admin template editor with live preview and test send; and open/click
   tracking via a signed Resend webhook. Degrades gracefully with no API key.
-- **Phase 5 — Analytics** _(next)_ Weekly sales, dealer activity, most-sold
-  products, and inventory history.
-- **Phase 6 — Integrations** Shopify, Fishbowl, HubSpot, QuickBooks, UPS,
-  FedEx. The `IntegrationConnection` model and provider enum already stub the
-  shape.
+- **Phase 5 — Analytics ✅**
+  Dedicated Analytics page: time-range/dealer/category filters; sales &
+  submission-rate trends (from immutable weekly snapshots, so history stays
+  accurate); sales-by-category; a dealer leaderboard with sell-through; and a
+  per-dealer drill-down (top products + recent submissions) when one dealer is
+  selected. Streams section-by-section via Suspense.
+- **Phase 6 — Integrations** _(next)_ Shopify, Fishbowl, HubSpot, QuickBooks,
+  UPS, FedEx. The `IntegrationConnection` model and provider enum already stub
+  the shape.
 
 ## Weekly email workflow
 
