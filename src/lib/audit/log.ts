@@ -18,6 +18,7 @@ export const AUDIT_ACTIONS = {
   reminderSent: "reminder.sent",
   emailTemplateSaved: "email_template.saved",
   userRoleChanged: "user.role_changed",
+  integrationUpdated: "integration.updated",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

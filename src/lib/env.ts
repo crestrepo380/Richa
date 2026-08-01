@@ -17,6 +17,8 @@ const serverEnvSchema = z.object({
   RESEND_FROM_EMAIL: z.string().min(1).optional(),
   RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(1).optional(),
+  /** Base64 32-byte key for encrypting integration config secrets at rest. */
+  INTEGRATION_ENCRYPTION_KEY: z.string().min(1).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -36,6 +38,7 @@ export function getServerEnv(): ServerEnv {
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
     CRON_SECRET: process.env.CRON_SECRET,
+    INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY,
   });
 
   if (!parsed.success) {

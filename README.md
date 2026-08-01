@@ -86,6 +86,21 @@ scattered across routes.
 4. Supabase **Row Level Security** (`supabase/sql/002_rls_policies.sql`) — a
    final backstop if data is ever reached through Supabase's auto REST API.
 
+### Extending: adding an integration
+
+The integration layer is ports-and-adapters, so a new provider is additive:
+
+1. Add a `ProviderDescriptor` to `src/features/integrations/registry.ts`
+   (name, category, capabilities, config fields).
+2. Add a connector class in `src/features/integrations/connectors/` extending
+   `BaseConnector` and overriding `testConnection` / `sync` for the capabilities
+   it supports.
+
+Nothing else changes — the super-admin UI, persistence, encryption, and
+capability model all pick it up from the registry. Connectors are deferred
+today (they report "not implemented"), so the scaffolding is real and testable
+while the provider API calls are future work.
+
 ## Roles
 
 | Role          | Can…                                                                 |
@@ -200,9 +215,14 @@ The product is built in phases; each is functional and tested before the next.
   accurate); sales-by-category; a dealer leaderboard with sell-through; and a
   per-dealer drill-down (top products + recent submissions) when one dealer is
   selected. Streams section-by-section via Suspense.
-- **Phase 6 — Integrations** _(next)_ Shopify, Fishbowl, HubSpot, QuickBooks,
-  UPS, FedEx. The `IntegrationConnection` model and provider enum already stub
-  the shape.
+- **Phase 6 — Integrations foundation ✅**
+  A provider-agnostic connector architecture (ports & adapters): a stable
+  `IntegrationConnector` contract, a capability model, a provider registry, and
+  deferred adapters for Shopify, Fishbowl, HubSpot, QuickBooks, UPS, and FedEx.
+  A super-admin Integrations screen connects/tests/disconnects each provider,
+  with credentials **encrypted at rest** (AES-256-GCM) and never returned to
+  the client. Per the brief the providers are *structured for, not built* —
+  adding a real one is a registry entry plus one connector class.
 
 ## Weekly email workflow
 

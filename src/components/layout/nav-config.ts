@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Mail,
   Package,
+  Plug,
   ScrollText,
   Settings,
   Store,
@@ -87,6 +88,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Email Templates",
     icon: Mail,
     permission: "email_template:manage",
+  },
+  {
+    href: "/super-admin/integrations",
+    label: "Integrations",
+    icon: Plug,
+    permission: "integration:manage",
   },
   {
     href: "/super-admin/audit-logs",
