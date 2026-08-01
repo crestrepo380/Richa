@@ -1,0 +1,256 @@
+// Dealer Inventory & Replenishment Portal — database schema
+// Managed with Prisma, hosted on Supabase Postgres.
+// Auth identities live in Supabase's auth.users table; the `Profile` model
+// mirrors each user (1:1 via id) and carries the app-level role + dealer link.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth / Roles
+// ---------------------------------------------------------------------------
+
+enum Role {
+  DEALER
+  ADMIN
+  SUPER_ADMIN
+}
+
+/// Mirrors auth.users (id is the Supabase auth user id). Created automatically
+/// by a Postgres trigger (see supabase/sql/001_profiles_trigger.sql) whenever
+/// a new user signs up, defaulting to DEALER.
+model Profile {
+  id        String   @id @db.Uuid
+  email     String   @unique
+  fullName  String?  @map("full_name")
+  role      Role     @default(DEALER)
+  dealerId  String?  @map("dealer_id") @db.Uuid
+  dealer    Dealer?  @relation(fields: [dealerId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  auditLogs AuditLog[]
+
+  @@map("profiles")
+}
+
+// ---------------------------------------------------------------------------
+// Core business entities
+// ---------------------------------------------------------------------------
+
+model Dealer {
+  id          String   @id @default(uuid()) @db.Uuid
+  company     String
+  contactName String   @map("contact_name")
+  email       String   @unique
+  phone       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  profiles      Profile[]
+  inventory     DealerInventory[]
+  weeklyReports WeeklyReport[]
+  notifications Notification[]
+
+  @@index([active])
+  @@map("dealers")
+}
+
+enum ProductCategory {
+  APPAREL
+  PARTS
+  ACCESSORIES
+  HELMETS
+  OTHER
+}
+
+model Product {
+  id            String          @id @default(uuid()) @db.Uuid
+  sku           String          @unique
+  productNumber String          @map("product_number")
+  description   String
+  color         String?
+  size          String?
+  category      ProductCategory @default(OTHER)
+  imageUrl      String?         @map("image_url")
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  inventory        DealerInventory[]
+  weeklyReportLines WeeklyReportLine[]
+
+  @@index([category])
+  @@map("products")
+}
+
+/// Current, live state of every product at every dealer. Dealers only ever
+/// edit `currentOnHand`; `unitsSold` and `replenishQuantity` are derived
+/// server-side whenever a new value is saved — never entered by hand.
+model DealerInventory {
+  id                 String   @id @default(uuid()) @db.Uuid
+  dealerId           String   @map("dealer_id") @db.Uuid
+  productId          String   @map("product_id") @db.Uuid
+  originalQuantity   Int      @default(0) @map("original_quantity")
+  currentOnHand      Int      @default(0) @map("current_on_hand")
+  unitsSold          Int      @default(0) @map("units_sold")
+  replenishQuantity  Int      @default(0) @map("replenish_quantity")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  dealer  Dealer  @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([dealerId, productId])
+  @@index([dealerId])
+  @@index([productId])
+  @@map("dealer_inventory")
+}
+
+enum ReportStatus {
+  PENDING
+  SUBMITTED
+  OVERDUE
+}
+
+/// One row per dealer per ISO week. `week` is stored as the Monday date of
+/// that week so it sorts and groups cleanly.
+model WeeklyReport {
+  id            String       @id @default(uuid()) @db.Uuid
+  dealerId      String       @map("dealer_id") @db.Uuid
+  week          DateTime     @db.Date
+  status        ReportStatus @default(PENDING)
+  submitted     Boolean      @default(false)
+  submittedAt   DateTime?    @map("submitted_at")
+  reminderCount Int          @default(0) @map("reminder_count")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  dealer Dealer             @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  lines  WeeklyReportLine[]
+
+  @@unique([dealerId, week])
+  @@index([week])
+  @@index([status])
+  @@map("weekly_reports")
+}
+
+/// Immutable snapshot of a product's numbers at the moment a weekly report
+/// was submitted. This is what powers Inventory History / Sales Summary
+/// reports without recomputing from mutable current state.
+model WeeklyReportLine {
+  id                String   @id @default(uuid()) @db.Uuid
+  weeklyReportId    String   @map("weekly_report_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
+  originalQuantity  Int      @map("original_quantity")
+  currentOnHand     Int      @map("current_on_hand")
+  unitsSold         Int      @map("units_sold")
+  replenishQuantity Int      @map("replenish_quantity")
+
+  weeklyReport WeeklyReport @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@unique([weeklyReportId, productId])
+  @@map("weekly_report_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Communication / observability
+// ---------------------------------------------------------------------------
+
+enum EmailType {
+  REMINDER_1
+  REMINDER_2
+  REMINDER_3
+  OVERDUE_NOTICE
+  WELCOME
+  ANNOUNCEMENT
+  CUSTOM
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  dealerId  String    @map("dealer_id") @db.Uuid
+  emailType EmailType @map("email_type")
+  /** Monday of the week this email relates to — enables per-week idempotency. */
+  week      DateTime? @db.Date
+  /** Resend message id, used to correlate delivery/open/click webhook events. */
+  providerMessageId String? @unique @map("provider_message_id")
+  sentAt    DateTime  @default(now()) @map("sent_at")
+  opened    Boolean   @default(false)
+  clicked   Boolean   @default(false)
+
+  dealer Dealer @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+
+  @@index([dealerId])
+  @@index([emailType])
+  @@index([dealerId, week, emailType])
+  @@map("notifications")
+}
+
+/// Super-admin managed, reusable email templates with {{variable}} tokens.
+model EmailTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  subject   String
+  body      String
+  variables String[] @default([])
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_templates")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  action    String
+  metadata  Json?
+  timestamp DateTime @default(now())
+
+  user Profile? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Future integrations (schema stub only — not wired up yet)
+// ---------------------------------------------------------------------------
+
+enum IntegrationProvider {
+  SHOPIFY
+  FISHBOWL
+  HUBSPOT
+  QUICKBOOKS
+  UPS
+  FEDEX
+}
+
+enum IntegrationStatus {
+  DISCONNECTED
+  CONNECTED
+  ERROR
+}
+
+model IntegrationConnection {
+  id          String              @id @default(uuid()) @db.Uuid
+  provider    IntegrationProvider
+  status      IntegrationStatus   @default(DISCONNECTED)
+  config      Json?
+  lastSyncAt  DateTime?           @map("last_sync_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@unique([provider])
+  @@map("integration_connections")
+}

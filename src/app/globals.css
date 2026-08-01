@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+/*
+ * Class-based dark mode (not media-query based) so a user's explicit choice can
+ * override the OS preference. Tailwind v4 needs this declared as a custom
+ * variant since the default `dark:` uses prefers-color-scheme.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. Every surface/border/text colour references one of these, so
+ * theming is a single class toggle on <html> rather than per-component sprawl.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-muted: var(--brand-muted);
+  --color-success: var(--success);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-muted: var(--warning-muted);
+  --color-danger: var(--danger);
+  --color-danger-muted: var(--danger-muted);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-grid: var(--chart-grid);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #f6f7f9;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-muted: #f1f3f7;
+  --line: #e2e5ec;
+  --muted: #64748b;
+  --brand: #b91c1c;
+  --brand-fg: #ffffff;
+  --brand-muted: #fef2f2;
+  --success: #15803d;
+  --success-muted: #f0fdf4;
+  --warning: #b45309;
+  --warning-muted: #fffbeb;
+  --danger: #b91c1c;
+  --danger-muted: #fef2f2;
+  /* Chart series — validated (dataviz skill) for CVD + contrast on the light
+     surface. Distinct from the brand red, which stays reserved for chrome. */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-grid: #e2e5ec;
+}
+
+.dark {
+  --background: #0b0f19;
+  --foreground: #e8ecf4;
+  --surface: #131926;
+  --surface-muted: #1b2331;
+  --line: #26303f;
+  --muted: #94a3b8;
+  --brand: #ef4444;
+  --brand-fg: #ffffff;
+  --brand-muted: #2a1416;
+  --success: #4ade80;
+  --success-muted: #0f2318;
+  --warning: #fbbf24;
+  --warning-muted: #2a1f08;
+  --danger: #f87171;
+  --danger-muted: #2a1416;
+  /* Chart series stepped for the dark surface (validated, not an auto-flip). */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-grid: #26303f;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Keyboard users must always be able to see where they are. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * Print / Save-as-PDF. Strips the app chrome (sidebar, header, sticky bars)
+ * and forces a light, ink-friendly surface so reports print as clean tables.
+ */
+@media print {
+  :root {
+    --background: #ffffff;
+    --surface: #ffffff;
+    --surface-muted: #f3f4f6;
+    --foreground: #000000;
+    --line: #d1d5db;
+  }
+  aside,
+  header,
+  .print\:hidden {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .lg\:pl-64 {
+    padding-left: 0 !important;
+  }
+  table {
+    font-size: 11px;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    break-inside: avoid;
+  }
+}
