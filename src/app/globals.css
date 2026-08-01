@@ -27,6 +27,9 @@
   --color-warning-muted: var(--warning-muted);
   --color-danger: var(--danger);
   --color-danger-muted: var(--danger-muted);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-grid: var(--chart-grid);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -47,6 +50,11 @@
   --warning-muted: #fffbeb;
   --danger: #b91c1c;
   --danger-muted: #fef2f2;
+  /* Chart series — validated (dataviz skill) for CVD + contrast on the light
+     surface. Distinct from the brand red, which stays reserved for chrome. */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-grid: #e2e5ec;
 }
 
 .dark {
@@ -65,6 +73,10 @@
   --warning-muted: #2a1f08;
   --danger: #f87171;
   --danger-muted: #2a1416;
+  /* Chart series stepped for the dark surface (validated, not an auto-flip). */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-grid: #26303f;
 }
 
 body {
@@ -86,5 +98,39 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * Print / Save-as-PDF. Strips the app chrome (sidebar, header, sticky bars)
+ * and forces a light, ink-friendly surface so reports print as clean tables.
+ */
+@media print {
+  :root {
+    --background: #ffffff;
+    --surface: #ffffff;
+    --surface-muted: #f3f4f6;
+    --foreground: #000000;
+    --line: #d1d5db;
+  }
+  aside,
+  header,
+  .print\:hidden {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .lg\:pl-64 {
+    padding-left: 0 !important;
+  }
+  table {
+    font-size: 11px;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    break-inside: avoid;
   }
 }

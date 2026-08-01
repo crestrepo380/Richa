@@ -19,10 +19,24 @@ grow into a multi-distributor SaaS.
 | Forms & validation | React Hook Form + Zod                              |
 | Notifications      | sonner (toasts)                                    |
 | Email              | Resend _(Phase 4)_                                 |
-| Spreadsheets       | SheetJS / `xlsx` _(Phase 3)_                        |
-| Tables             | TanStack Table _(Phase 3)_                          |
+| Spreadsheets       | exceljs (see "Notes on `xlsx`" below)              |
+| Charts             | Recharts                                           |
 | Tests              | Vitest                                             |
 | Hosting            | Vercel                                             |
+
+### Notes on `xlsx`
+
+The brief specified SheetJS (`xlsx`). SheetJS now ships patched builds **only**
+from its own CDN (`cdn.sheetjs.com`), which this environment's network policy
+blocks, and the copy still on npm carries unpatched high-severity advisories
+(prototype pollution + ReDoS) on the exact parse path the import feature would
+use on uploaded files. Parsing untrusted uploads with a known-vulnerable
+version contradicts the security requirements, so imports and exports use
+**exceljs** instead — actively maintained, npm-installable, and free of those
+advisories (its one transitive `uuid` advisory is pinned out via an override).
+The report/export architecture is library-agnostic; swapping back to a patched
+SheetJS later is a change confined to `src/features/reports/export.ts` and
+`src/features/import/parse.ts`.
 
 > **Next.js 16 note:** middleware is now called **Proxy** (`src/proxy.ts`),
 > and `params` / `searchParams` are async (`await`ed). See `AGENTS.md`.
@@ -161,11 +175,16 @@ The product is built in phases; each is functional and tested before the next.
   Project setup, database schema, Supabase auth (password + magic link),
   role-based route protection, and dealer / admin / super-admin dashboard
   shells. Business-logic math and week handling are unit-tested.
-- **Phase 2 — Dealer inventory** _(next)_
-  The weekly count form and submission flow.
-- **Phase 3 — Admin** Dashboard charts & filters, reports, Excel/PDF/CSV
-  export, and Excel imports.
-- **Phase 4 — Email** Resend integration and the Monday/Wednesday/Friday
+- **Phase 2 — Dealer inventory ✅**
+  The weekly count form (live-derived sold/restock) and submission flow, plus
+  submission history.
+- **Phase 3 — Admin ✅**
+  Dashboard with charts (weekly sales, most-sold) + URL-driven filters +
+  dealer-activity/overdue and low-inventory panels; dealer CRUD (with optional
+  login invite); products and cross-dealer inventory views; four report
+  generators with Excel/CSV downloads and print-to-PDF; and a validated
+  two-step Excel import for products, dealers, and inventory.
+- **Phase 4 — Email** _(next)_ Resend integration and the Monday/Wednesday/Friday
   reminder cadence with overdue tracking.
 - **Phase 5 — Analytics** Weekly sales, dealer activity, most-sold products,
   and inventory history.
@@ -173,10 +192,17 @@ The product is built in phases; each is functional and tested before the next.
   FedEx. The `IntegrationConnection` model and provider enum already stub the
   shape.
 
-## Testing this phase
+## Testing
 
-- `npm run test` — replenishment math, week helpers, permission matrix.
+- `npm run test` — replenishment math, week helpers, permission matrix,
+  report CSV/formatting, and import row validation (47 tests).
 - `npm run build` — full type-check and route compilation.
-- Manually: sign in as each role and confirm the sidebar, redirects, and
-  access-denied behaviour match the table above. (Requires a configured
-  Supabase project.)
+- Manually (with a configured Supabase project + `npm run db:seed`):
+  - **Dealer:** update on-hand counts, watch the live sold/restock preview,
+    submit, and check the submission appears under My Submissions.
+  - **Admin:** filter the dashboard by dealer/category; open Reports, switch
+    report types, and download Excel/CSV / use Print for PDF; run an Excel
+    import and confirm invalid rows are listed with reasons before committing;
+    create and edit a dealer.
+  - Sign in as each role and confirm the sidebar, redirects, and access-denied
+    behaviour match the roles table above.
