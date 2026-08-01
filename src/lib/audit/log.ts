@@ -16,6 +16,7 @@ export const AUDIT_ACTIONS = {
   dealerUpdated: "dealer.updated",
   productImported: "product.imported",
   reminderSent: "reminder.sent",
+  emailTemplateSaved: "email_template.saved",
   userRoleChanged: "user.role_changed",
 } as const;
 

@@ -124,6 +124,10 @@ Fill in from your Supabase project (Settings → API and Settings → Database):
 npm run db:deploy     # apply Prisma migrations (creates the tables + enums)
 ```
 
+> **Migrations note:** the schema evolves across phases (e.g. Phase 4 adds
+> `week` and `provider_message_id` to `notifications`). Run `npm run db:migrate`
+> in development to generate/apply migrations, and `npm run db:deploy` in CI/prod.
+
 Then, in the Supabase SQL editor, run in order:
 
 1. `supabase/sql/001_profiles_trigger.sql` — mirrors `auth.users` → `profiles`
@@ -184,13 +188,34 @@ The product is built in phases; each is functional and tested before the next.
   login invite); products and cross-dealer inventory views; four report
   generators with Excel/CSV downloads and print-to-PDF; and a validated
   two-step Excel import for products, dealers, and inventory.
-- **Phase 4 — Email** _(next)_ Resend integration and the Monday/Wednesday/Friday
-  reminder cadence with overdue tracking.
-- **Phase 5 — Analytics** Weekly sales, dealer activity, most-sold products,
-  and inventory history.
+- **Phase 4 — Email ✅**
+  Resend integration; the Monday/Wednesday/Friday reminder cadence with
+  Saturday overdue-marking, driven by a secret-protected daily cron
+  (`vercel.json`); one-click magic-link "Update Inventory" buttons;
+  super-admin template editor with live preview and test send; and open/click
+  tracking via a signed Resend webhook. Degrades gracefully with no API key.
+- **Phase 5 — Analytics** _(next)_ Weekly sales, dealer activity, most-sold
+  products, and inventory history.
 - **Phase 6 — Integrations** Shopify, Fishbowl, HubSpot, QuickBooks, UPS,
   FedEx. The `IntegrationConnection` model and provider enum already stub the
   shape.
+
+## Weekly email workflow
+
+- A daily Vercel Cron (`vercel.json`) calls `/api/cron/reminders`. The job
+  itself decides what to do by weekday, so the single schedule covers the whole
+  cadence: **Mon** reminder 1, **Wed** reminder 2, **Fri** reminder 3, **Sat**
+  mark still-missing dealers **Overdue**. Dealers who've submitted are skipped,
+  and each reminder is sent at most once per dealer per week (idempotent).
+- Protect it by setting `CRON_SECRET`; Vercel Cron sends it automatically as a
+  Bearer token. To trigger manually: `curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/reminders`.
+- Configure `RESEND_API_KEY` + `RESEND_FROM_EMAIL` to actually send. Without
+  them the app runs fine and logs what it *would* send. Set
+  `RESEND_WEBHOOK_SECRET` and point a Resend webhook at `/api/webhooks/resend`
+  to record opens/clicks.
+- Super Admins customize copy at **Email Templates** ({{variables}} + live
+  preview + test send); `{{update_button}}` becomes the dealer's magic-link
+  button.
 
 ## Testing
 

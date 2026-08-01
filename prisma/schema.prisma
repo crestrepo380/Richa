@@ -179,6 +179,10 @@ model Notification {
   id        String    @id @default(uuid()) @db.Uuid
   dealerId  String    @map("dealer_id") @db.Uuid
   emailType EmailType @map("email_type")
+  /** Monday of the week this email relates to — enables per-week idempotency. */
+  week      DateTime? @db.Date
+  /** Resend message id, used to correlate delivery/open/click webhook events. */
+  providerMessageId String? @unique @map("provider_message_id")
   sentAt    DateTime  @default(now()) @map("sent_at")
   opened    Boolean   @default(false)
   clicked   Boolean   @default(false)
@@ -187,6 +191,7 @@ model Notification {
 
   @@index([dealerId])
   @@index([emailType])
+  @@index([dealerId, week, emailType])
   @@map("notifications")
 }
 

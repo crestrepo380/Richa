@@ -15,6 +15,7 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().min(1).optional(),
+  RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(1).optional(),
 });
 
@@ -33,6 +34,7 @@ export function getServerEnv(): ServerEnv {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+    RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
     CRON_SECRET: process.env.CRON_SECRET,
   });
 
